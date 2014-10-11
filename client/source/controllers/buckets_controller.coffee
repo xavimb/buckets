@@ -55,7 +55,7 @@ module.exports = class BucketsController extends Controller
       compose: (options) ->
         @entries = new Entries
 
-        @entries.fetch( data: {bucket: bucket.get('slug'), status: ''}, processData: yes ).done =>
+        @entries.fetch( data: {until: null, bucket: bucket.get('slug'), status: ''}, processData: yes ).done =>
           @view = new EntriesBrowser
             collection: @entries
             bucket: bucket
@@ -72,7 +72,7 @@ module.exports = class BucketsController extends Controller
           else if options.entryID
             @view.loadEntry options.entryID
           else
-            @view.subview('editEntry')?.dispose()
+            @view.clearEntry()
 
         @view? and @view.bucket.get('id') is options.bucket.get('id')
 

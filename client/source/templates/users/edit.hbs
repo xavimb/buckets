@@ -1,24 +1,33 @@
-<form class="panel panel-default">
+<form class="panel panel-default" autocomplete="off">
   <div class="panel-body">
     {{input 'name' name placeholder="Full name" label="Name"}}
     {{input 'email' email placeholder="Email" label="Email"}}
+
+    {{!-- Viewing your own profile --}}
     {{#is id currentUser.id}}
       <h4 data-toggle="collapse" data-target="#changePassword" class="collapsed"><span class="caret"></span> Update your password</h4>
       <div id="changePassword" class="collapse">
         {{input 'oldpassword' '' placeholder="Old password" type="password"}}
-        {{input 'newpassword1' '' placeholder="New password" type="password"}}
-        {{input 'newpassword2' '' placeholder="Confirm new password" type="password"}}
+        {{input 'password' '' placeholder="New password" type="password"}}
+        {{input 'passwordconfirm' '' placeholder="Confirm new password" type="password"}}
       </div>
 
+    {{!-- Viewing someone else's --}}
     {{else}}
-      {{#unless id}}
+      {{#if id}}
+        {{#if last_active}}
+          <p>{{name}} was last active {{timeAgo last_active}}.</p>
+        {{else}}
+          <p>{{name}} has not logged in yet.</p>
+        {{/if}}
+      {{else}}
         {{input 'password' '' placeholder="Password" type="password"}}
-      {{/unless}}
+      {{/if}}
+      {{#hasRole 'administrator'}}
+        <h4>Permissions</h4>
+        {{checkbox 'admin' isAdmin label="User is an administrator"}}
+      {{/hasRole}}
     {{/is}}
-    {{#hasRole 'administrator'}}
-      <h4>Permissions</h4>
-      {{checkbox 'admin' isAdmin label="User is an administrator"}}
-    {{/hasRole}}
 
     <div class="pull-right">
       {{#if id}}

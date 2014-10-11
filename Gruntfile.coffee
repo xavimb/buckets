@@ -1,4 +1,3 @@
-config = require './server/config'
 mongoose = require 'mongoose'
 
 module.exports = (grunt) ->
@@ -55,7 +54,7 @@ module.exports = (grunt) ->
 
       plugins:
         options:
-          external: ['buckets', 'hbsfy/runtime']
+          exclude: ['buckets', 'hbsfy/runtime']
           alias: []
         files: [
           expand: yes
@@ -94,6 +93,8 @@ module.exports = (grunt) ->
         command: 'NODE_ENV=test ./node_modules/mocha/bin/mocha --compilers coffee:coffee-script/register --recursive test/server -b'
       cov:
         command: 'NODE_ENV=test ./node_modules/mocha/bin/mocha --compilers coffee:coffee-script/register --recursive test/server --require blanket --reporter html-cov > coverage.html'
+      publish:
+        command: 'npm publish'
 
     concat:
       style:
@@ -104,6 +105,9 @@ module.exports = (grunt) ->
             'public/css/bootstrap.css'
             'public/css/index.css'
           ]
+      pluginsStyle:
+        files:
+          'public/css/plugins.css': ['public/plugins/*.css']
 
     copy:
       assets:
@@ -116,11 +120,6 @@ module.exports = (grunt) ->
         cwd: 'docs/api'
         src: ['**/*']
         dest: 'public/docs/api'
-      fontastic:
-        expand: yes
-        cwd: 'client/assets/fontastic/fonts/'
-        src: ['*']
-        dest: 'public/css/fonts/'
       ace:
         expand: yes
         cwd: 'bower_components/ace-builds/src-min-noconflict/'
@@ -131,6 +130,11 @@ module.exports = (grunt) ->
           'theme-*.js' # These are loaded on the fly anyway
         ]
         dest: 'public/js/ace/'
+      fontastic:
+        expand: yes
+        cwd: 'client/assets/fontastic/fonts/'
+        src: ['*']
+        dest: 'public/css/fonts/'
 
     cssmin:
       app:
@@ -143,16 +147,8 @@ module.exports = (grunt) ->
       dev:
         options:
           spawn: false
-      prod:
-        options:
-          background: false
-          livereload: false
-      server:
-        options:
-          background: false
-      options:
-        script: 'server/start.coffee'
-        opts: ['node_modules/coffee-script/bin/coffee']
+          script: 'server/start.coffee'
+          opts: ['node_modules/coffee-script/bin/coffee']
 
     less:
       app:
@@ -161,10 +157,6 @@ module.exports = (grunt) ->
         src: ['**/*.less']
         dest: 'public/css/'
         ext: '.css'
-
-    migrations:
-      path: "#{__dirname}/migrations"
-      mongo: config.db
 
     modernizr:
       app:
@@ -197,22 +189,31 @@ module.exports = (grunt) ->
       app:
         files:
           'public/js/buckets.js': ['public/js/buckets.js']
+          'public/vendor/spin.js/spin.js': ['public/vendor/spin.js/spin.js']
 
       vendor:
         dest: 'public/js/vendor.js'
         src: [
           # Order matters for some
-          'public/vendor/spin.js/spin.js'
           'public/vendor/ladda/js/ladda.js'
           'public/vendor/ladda/js/ladda.jquery.js'
+
+          'public/vendor/blueimp-file-upload/js/jquery.ui.widget.js'
+          'public/vendor/blueimp-file-upload/js/jquery.fileupload.js'
+          'public/vendor/cloudinary_js/js/jquery.cloudinary.js'
 
           'public/vendor/**/*.js'
 
           # Remove some which we’ll load on the fly
+          '!public/vendor/spin.js/spin.js'
           '!public/vendor/fastclick/fastclick.js'
           '!public/vendor/jquery/**/*.js'
         ]
         filter: 'isFile'
+
+      plugins:
+        dest: 'public/js/plugins.js'
+        src: ['public/plugins/*.js']
 
       options:
         sourceMap: yes
@@ -222,7 +223,7 @@ module.exports = (grunt) ->
     watch:
       apidoc:
         files: ['server/routes/api/**/*.coffee']
-        tasks: ['apidoc']
+        tasks: ['apidoc', 'copy:docs']
 
       bower:
         files: ['bower.json']
@@ -255,7 +256,7 @@ module.exports = (grunt) ->
         tasks: ['build-style']
 
       express:
-        files: ['server/**/*.coffee', 'node_modules/buckets-*/*.{coffee,hbs}']
+        files: ['server/**/*.coffee', 'node_modules/buckets-*/*.{coffee,hbs}', '.env']
         tasks: ['express:dev']
         options:
           spawn: false
@@ -263,11 +264,11 @@ module.exports = (grunt) ->
 
       pluginScripts:
         files: ['node_modules/buckets-*/**/{models,controllers,helpers,templates,views}/**/*.{coffee,hbs}', 'node_modules/buckets-*/*.{coffee,hbs}']
-        tasks: ['browserify:plugins']
+        tasks: ['browserify:plugins', 'uglify:plugins']
 
       pluginStyles:
         files: ['node_modules/buckets-*/**/*.styl']
-        tasks: ['stylus:plugins']
+        tasks: ['stylus:plugins', 'concat:plugins']
 
       livereload:
         options:
@@ -277,12 +278,6 @@ module.exports = (grunt) ->
           'public/{css,js}/*.{css,js}'
           'public/plugins/**/*.{css,js}'
         ]
-
-  grunt.registerTask 'checkDatabase', (next, stuff...)->
-    connection = mongoose.createConnection config.db, (err) ->
-      if err
-        throw "\nBuckets could not connect to MongoDB :/\n".magenta + "See the " + 'README.md'.bold + " for more info on installing MongoDB and check your settings at " + 'server/config.coffee'.bold + "."
-        exit
 
   grunt.loadNpmTasks 'grunt-apidoc'
   grunt.loadNpmTasks 'grunt-bower-task'
@@ -298,27 +293,23 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-express-server'
   grunt.loadNpmTasks 'grunt-modernizr'
-  grunt.loadNpmTasks 'grunt-mongo-migrations'
   grunt.loadNpmTasks 'grunt-shell'
 
-  grunt.registerTask 'build-style', ['stylus', 'less', 'concat:style']
+  grunt.registerTask 'build-style', ['stylus', 'less', 'concat:style', 'concat:pluginsStyle']
   grunt.registerTask 'build-scripts', ['browserify:app']
 
   # Building
-  grunt.registerTask 'default', ['build']
-  grunt.registerTask 'build', ['clean:app', 'bower', 'apidoc', 'copy', 'uglify:vendor', 'browserify:plugins', 'build-scripts', 'build-style', 'modernizr']
-  grunt.registerTask 'prepublish', ['build', 'uglify:app', 'cssmin']
+  grunt.registerTask 'default', ['clean:app', 'bower', 'apidoc', 'copy', 'uglify:vendor', 'browserify:plugins', 'uglify:plugins', 'build-scripts', 'build-style', 'modernizr']
+  grunt.registerTask 'prepublish', ['clean:all', 'default', 'uglify:app', 'cssmin']
+  grunt.registerTask 'publish', ['prepublish', 'shell:publish']
 
   # Serving
-  grunt.registerTask 'dev', ['checkDatabase', 'migrate:all', 'build', 'express:dev', 'watch']
-  grunt.registerTask 'devserve', ['migrate:all', 'express:dev', 'watch']
-  grunt.registerTask 'serve', ['migrate:all', 'express:server']
+  grunt.registerTask 'start', ['express:dev', 'watch']
+  grunt.registerTask 'dev', ['default', 'start']
 
   # Tests
   grunt.registerTask 'test:server', ['shell:mocha']
   grunt.registerTask 'test:server:cov', ['shell:cov']
-  grunt.registerTask 'test:client', ['build', 'browserify:tests', 'testem:ci:basic']
+  grunt.registerTask 'test:client', ['default', 'browserify:tests', 'testem:ci:basic']
   grunt.registerTask 'test:client:html', ['browserify:tests', 'testem:ci:html']
   grunt.registerTask 'test', ['clean:all', 'test:server', 'test:client']
-
-  grunt.registerTask 'heroku:production', ['prepublish', 'migrate:all']

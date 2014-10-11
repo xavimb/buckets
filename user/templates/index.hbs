@@ -3,20 +3,20 @@
 </header>
 
 <div id="content">
-  {{#entries bucket="articles" slug=req.params.slug search=req.query.q}}
-    <h1>
-      <a href="/{{slug}}">{{title}}</a>
-      {{#if author}}
-        <em></em>
-      {{/if}}
-    </h1>
+  {{#entries bucket="articles" slug=req.params.slug}}
+    <h1><a href="/{{slug}}">{{title}}</a></h1>
+    {{#if image}}
+      <div>
+        {{img image}}
+      </div>
+    {{/if}}
     {{markdown body}}
     <footer>
-      <em>Published on {{formatTime publishDate format="MMM D, YYYY h:mma"}} by 
-      <strong>{{author.name}}</strong></em>
+      {{formatTime publishDate format="MMM D, h:mma"}} by
+      <strong>{{author.name}}</strong> in {{bucket.name}}
     </footer>
     {{!-- {{inspect .}} --}}
   {{else}}
-    <p>Add some entries into any Bucket and they’ll show up here :)</p>
+    {{next}}
   {{/entries}}
 </div>

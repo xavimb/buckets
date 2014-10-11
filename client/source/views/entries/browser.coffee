@@ -56,9 +56,28 @@ module.exports = class EntriesBrowser extends PageView
 
     @renderDetailView()
 
+  clearEntry: ->
+    subview = @subview('editEntry')
+    return unless subview?.$el
+
+    subview.$el.fadeOut 100, -> subview?.dispose()
+    @$('.entry').removeClass 'active'
+
   modelSaved: (entry, newData) =>
     if newData?.id
-      toastr.success "You saved “#{entry.get('title')}”"
+      notificationMessage = "You saved “#{entry.get('title')}”"
+      if newData.publishDate?
+        if new Date(newData.publishDate).getTime() > new Date().getTime()
+          notificationMessage = "You scheduled “#{entry.get('title')}”"
+        else if newData.status == "live"
+          notificationMessage = "You published “#{entry.get('title')}”"
+      else if newData.status == "draft"
+        if entry.previousAttributes().lastModified != newData.lastModified
+          notificationMessage = "You updated “#{entry.get('title')}”"
+        else
+          notificationMessage = "You saved “#{entry.get('title')}” draft"
+      toastr.success notificationMessage
+      @model.set newData
       @collection.add @model
     else
       toastr.success "You deleted “#{entry.get('title')}”"

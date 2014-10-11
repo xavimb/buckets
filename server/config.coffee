@@ -13,6 +13,7 @@ config =
     pluginsPath: "#{__dirname}/../node_modules/"
     catchAll: yes
     autoStart: yes
+    cloudinary: process.env.CLOUDINARY_URL
     db: "mongodb://localhost/buckets_#{env}"
   production:
     smtp:
@@ -21,6 +22,10 @@ config =
         user: process.env.MANDRILL_USERNAME
         pass: process.env.MANDRILL_APIKEY
     db: process.env.MONGOHQ_URL
+    fastly:
+      api_key: process.env.FASTLY_API_KEY
+      cdn_url: process.env.FASTLY_CDN_URL
+      service_id: process.env.FASTLY_SERVICE_ID
   development:
     smtp:
       service: 'Gmail'

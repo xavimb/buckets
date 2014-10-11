@@ -2,7 +2,6 @@ Backbone = require 'backbone'
 Cocktail = require 'cocktail'
 
 Backbone.$ = $
-Cocktail.patch Backbone
 
 Chaplin = require 'chaplin'
 
@@ -18,7 +17,7 @@ module.exports = class BucketsApp extends Chaplin.Application
   title: 'Buckets'
   initialize: (@options = {}) ->
     @initRouter routes, root: "/#{@options.adminSegment}/"
-    
+
     @initDispatcher
       controllerPath: 'client/source/controllers/'
       controllerSuffix: '_controller.coffee'
@@ -27,8 +26,10 @@ module.exports = class BucketsApp extends Chaplin.Application
     mediator.user = new User @options.user if @options.user
     mediator.plugins = {}
 
-    _.each @options.bootPlugins, (plugin) ->
-      mediator.loadPlugin plugin.slug if plugin.slug
+    if options.cloudinary
+      $.cloudinary.config
+        api_key: options.cloudinary.api_key
+        cloud_name: options.cloudinary.cloud_name
 
     mediator.layout = new Layout
       title: 'Buckets'

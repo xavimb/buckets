@@ -68,7 +68,7 @@ module.exports = app = express()
 
 ###
   @api {post} /users Add a User
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
   @apiName PostUser
 
@@ -81,7 +81,7 @@ module.exports = app = express()
 
 ###
   @api {get} /users Request Users
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
   @apiName GetUsers
 
@@ -91,6 +91,7 @@ module.exports = app = express()
 app.route('/users')
   .post (req, res) ->
     return res.status(401).end() unless req.user?.hasRole ['administrator']
+    return req.status(400).end() unless typeof req?.body is 'object'
 
     newUser = new User req.body
 
@@ -104,7 +105,7 @@ app.route('/users')
 
 ###
   @api {get} /users/:id Request a User
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
   @apiName GetUser
 
@@ -117,13 +118,19 @@ app.route('/users')
 
 ###
   @api {put} /users/:id Edit a User
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
-  @apiName GetUser
+  @apiName PutUser
 
   @apiParam {String} id User ID (sent in URL)
+  @apiParam {String} [name] The full name of the user.
+  @apiParam {String} [email] The user’s email address.
 
   @apiPermission administrator
+
+  @apiParam (Changing password) {String} [password] The new password you would like to use.
+  @apiParam (Changing password) {String} [passwordconfirm] The new password you would like to use.
+  @apiParam (Changing password) {String} [oldpassword] Your current password.
 
   @apiSuccessStructure User
 
@@ -133,7 +140,7 @@ app.route('/users')
 
 ###
   @api {delete} /users/:id Delete a User
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
   @apiName DeleteUser
 
@@ -147,18 +154,33 @@ app.route('/users')
 
 app.route('/users/:userID')
   .get (req, res) ->
-    User.findOne _id: req.params.userID, (err, user) ->
-    res.send user if user
+    User.findById req.params.userID, (err, user) ->
+      return res.status(400).end() if err or not user
+      res.send user if user
 
   .delete (req, res) ->
+    return res.status(401).end() unless req.user?.hasRole ['administrator']
+
     User.remove _id: req.params.userID, (err) ->
-      return res.status(400).send e: err if err
+      return res.status(400).end() if err
       res.status(200).end()
 
   .put (req, res) ->
-    delete req.body._id
-    User.findOne {_id: req.params.userID}, (err, user) ->
-      return res.status(400).send e: err if err
+    return res.status(401).end() unless req.user?.hasRole ['administrator'] or req.user?._id is req.params.userID
+
+    User.findById req.params.userID, 'passwordDigest', (err, user) ->
+      return res.status(400).end() if err or not user
+
+      {password, passwordconfirm, oldpassword} = req.body
+      delete req.body.password # Only add back after checking below
+      if password and passwordconfirm and oldpassword
+        if password isnt passwordconfirm
+          user.invalidate 'passwordconfirm', 'Your new password and confirmation don’t match.'
+        else if not user.authenticate oldpassword
+          user.invalidate 'oldpassword', 'The provided password is incorrect.'
+        else
+          # All good
+          req.body.password = password
 
       user.set(req.body).save (err, user) ->
         return res.status(400).send err if err
@@ -167,7 +189,7 @@ app.route('/users/:userID')
 ###
   @api {post} /forgot Request a Password Reset
   @apiDescription Will look for the provided email, generate a reset token, and send a password reset email to the matching user.
-  @apiVersion 0.0.2
+  @apiVersion 0.0.4
   @apiGroup Users
   @apiName ResetPassword
 
@@ -180,6 +202,8 @@ app.route('/users/:userID')
 ###
 
 app.post '/forgot', (req, res) ->
+  return req.status(400).end() unless typeof req?.body is 'object'
+
   async.waterfall [
     (done) ->
       crypto.randomBytes 20, (err, buf) ->

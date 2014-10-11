@@ -1,5 +1,4 @@
 Chaplin = require 'chaplin'
-getSlug = require 'speakingurl'
 _ = require 'underscore'
 
 mediator = Chaplin.mediator
@@ -10,7 +9,6 @@ module.exports = class Layout extends Chaplin.Layout
     'header': '#bkts-header'
 
   events:
-    'keyup input[data-sluggify]': 'keyUpSluggify'
     'click [href="#menu"]': 'clickMenu'
     'click #logo a': 'clickLogo'
     'click .nav-primary a': 'clickMenuNav'
@@ -31,6 +29,13 @@ module.exports = class Layout extends Chaplin.Layout
       showMethod: 'slideDown'
       hideMethod: 'slideUp'
 
+    # Add Fastclick for touch devices
+    Modernizr.load
+      test: Modernizr.touch
+      yep: "/#{mediator.options.adminSegment}/vendor/fastclick/fastclick.js"
+      complete: ->
+        FastClick?.attach document.body
+
     # Add delegated tooltip for all help icons
     @$el.tooltip
       selector: '.show-tooltip'
@@ -39,31 +44,24 @@ module.exports = class Layout extends Chaplin.Layout
         show: 800
         hide: 50
 
-    # Add Fastclick for touch devices
-    Modernizr.load
-      test: Modernizr.touch
-      yep: "/#{mediator.options.adminSegment}/vendor/fastclick/fastclick.js"
-      complete: ->
-        FastClick?.attach document.body
-
   clickMenu: (e) ->
+    @$nav ?= @$('.nav-primary')
+    @$btnMenu ?= @$('.btn-menu')
+
     e.preventDefault()
-    @$('.nav-primary').toggleClass('hidden-xs').toggle().slideToggle 200
-    @$('.btn-menu').toggleClass('active')
+    @$nav.toggleClass('hidden-xs').toggle().slideToggle 200
+    @$btnMenu.toggleClass('active')
 
   clickMenuNav: ->
-    if @$('.hidden-xs:visible').length is 0
-      @$('.nav-primary').css(display: 'block').slideToggle 150, =>
-        @$('.nav-primary').toggleClass('hidden-xs').toggle()
+    @$nav ?= @$('.nav-primary')
+    @$btnMenu ?= @$('.btn-menu')
 
-  keyUpSluggify: (e) ->
-    $el = @$(e.currentTarget)
+    @$btnMenu.removeClass 'active'
 
-    val = $el.val()
-    $target = @$("input[name=\"#{$el.data('sluggify')}\"]")
-    slug = getSlug val
+    if $(window).width() <= 768
 
-    $target.val slug
+      @$nav.css(display: 'block').slideToggle 150, =>
+        @$nav.toggleClass('hidden-xs').toggle()
 
   fadeAwayFadeAway: ->
     $('body').css opacity: .85

@@ -1,10 +1,11 @@
 Swag = require 'swag'
 _ = require 'underscore'
-
+cloudinary = require 'cloudinary'
 config = require '../config'
 Entry = require '../models/entry'
 Bucket = require '../models/bucket'
 moment = require 'moment'
+munge = require 'munge'
 
 module.exports = (hbs) ->
 
@@ -23,6 +24,10 @@ module.exports = (hbs) ->
   hbs.registerHelper 'timeAgo', (value, options) ->
     moment(value).fromNow()
 
+  # munge helper
+  hbs.registerHelper 'munge', (value) ->
+    new hbs.handlebars.SafeString munge value
+
   # entries helper
   hbs.registerAsyncHelper 'entries', (options, cb) ->
 
@@ -34,7 +39,7 @@ module.exports = (hbs) ->
       for entry in entries
 
         # Make content attributes first-level tags, ie. `{{body}}` instead of `{{content.body}}`
-        entryJSON = _.extend entry.toJSON(), entry.content
+        entryJSON = _.extend entry, entry.content
         delete entryJSON.content
 
         try
@@ -59,3 +64,10 @@ module.exports = (hbs) ->
       .replace /[&<>]/g, (key) -> entities[key]
 
     new hbs.handlebars.SafeString "<pre>#{json}</pre>"
+
+  hbs.registerHelper 'img', (img, options) ->
+    return unless img?.public_id
+    settings = _.defaults options.hash,
+      fetch_format: 'auto'
+
+    new hbs.handlebars.SafeString cloudinary.image(img.public_id, settings)

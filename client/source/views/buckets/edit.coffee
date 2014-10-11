@@ -7,10 +7,9 @@ FormMixin = require 'views/base/mixins/form'
 tpl = require 'templates/buckets/edit'
 
 module.exports = class BucketEditView extends PageView
-
   template: tpl
-
   optionNames: PageView::optionNames.concat ['fields', 'members', 'users']
+  mixins: [FormMixin]
 
   regions:
     'fields': '#fields'
@@ -25,7 +24,22 @@ module.exports = class BucketEditView extends PageView
     _.extend super,
       randomBucketPlaceholder: _.sample ['Articles','Songs','Videos','Events']
       colors: ['green', 'teal', 'blue', 'purple', 'red', 'orange', 'yellow', 'gray']
-      icons: ['edit', 'photos', 'calendar', 'movie', 'music-note', 'map-pin', 'quote', 'artboard', 'contacts-1']
+      icons: [
+        'edit'
+        'camera-front'
+        'calendar'
+        'video-camera'
+        'headphone'
+        'map'
+        'chat-bubble'
+        'shopping-bag'
+        'user'
+        'goal'
+        'megaphone'
+        'star'
+        'bookmark'
+        'toolbox'
+      ]
 
   render: ->
     super
@@ -67,5 +81,3 @@ module.exports = class BucketEditView extends PageView
 
   setActiveTab: (idx) ->
     @$('.nav-tabs li').eq(idx-1).find('a').click()
-
-  @mixin FormMixin

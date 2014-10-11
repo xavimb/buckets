@@ -1,16 +1,39 @@
+dotenv = require 'dotenv'
+dotenv.load()
+
+_ = require 'underscore'
+colors = require 'colors'
+cookieParser = require 'cookie-parser'
+bodyParser = require 'body-parser'
+session = require 'cookie-session'
+compression = require 'compression'
+responseTime = require 'response-time'
+express = require 'express'
+hbs = require 'hbs'
+fs = require 'fs'
+logger = require './logger'
+
 class Buckets
   constructor: (config) ->
-    _ = require 'underscore'
+
     baseConfig = require './config'
 
     @config = baseConfig = _.extend baseConfig, config
 
-    express = require 'express'
-    cookieParser = require 'cookie-parser'
-    bodyParser = require 'body-parser'
-    session = require 'cookie-session'
-    compression = require 'compression'
-    colors = require 'colors'
+    try
+      newrelicConfig = require '../newrelic'
+      if newrelicConfig.config.license_key
+        newrelic = require 'newrelic'
+        logger.info 'NewRelic '.cyan + 'On'
+        hbs.registerHelper 'newrelic', ->
+          new hbs.handlebars.SafeString newrelic.getBrowserTimingHeader()
+    catch e
+      logger.error 'There was an error loading NewRelic', e
+
+    # Purge Fastly on prod pushes
+    if @config.fastly?.api_key and @config.fastly?.service_id and @config.env is 'production'
+      fastly = require('fastly')(@config.fastly.api_key)
+      fastly.purgeAll @config.fastly.service_id, -> logger.error 'Purged Fastly Cache'.red
 
     passport = require './lib/auth'
 
@@ -21,8 +44,13 @@ class Buckets
 
     @app = express()
 
+    @app.use (req, res, next) ->
+      req.startTime = Date.now()
+      next()
+
     # Handle cookies and sessions and stuff
-    @app.use compression()
+    @app.use compression level: 4
+    @app.use responseTime() if @config.env isnt 'production'
     @app.use cookieParser @config.salt
     @app.use session
       secret: @config.salt
@@ -44,7 +72,7 @@ class Buckets
   start: (done) ->
     done?() if @server
     @server ?= @app.listen @config.port, =>
-      console.log ("\nBuckets is running at " + "http://localhost:#{@config.port}/".underline.bold).yellow
+      logger.info ("Buckets is running at " + "http://localhost:#{@config.port}/".underline.bold).yellow
       done?()
 
   stop: (done) ->

@@ -30,14 +30,14 @@ userSchema = new Schema
     required: true
     lowercase: true
     trim: true
-    unique: true
+    index:
+      unique: yes
   passwordDigest:
     type: String
     required: yes
     select: no
   last_active:
     type: Date
-    default: Date.now
   date_created:
     type: Date
     default: Date.now
@@ -52,6 +52,7 @@ userSchema = new Schema
   toJSON:
     virtuals: yes
     transform: (doc, ret, options) ->
+      delete ret.password # Since we include virtuals
       delete ret._id
       delete ret.__v
       ret
@@ -136,7 +137,7 @@ userSchema.path 'passwordDigest'
     if @isNew and !@password?
       @invalidate 'password', 'A password is required.'
 
-    if @password? and not /^(?=.*?\d)\w(\w|[!@#$%]){5,20}/.test(@password)
+    if @password? and not /^(?=.*?\d)\w(\w|[!@#$%]){5,20}$/.test(@password)
       @invalidate 'password', 'Your password must be between 6–20 characters
         and include a number.'
   , null

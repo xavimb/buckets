@@ -4,9 +4,11 @@ reset = require '../../reset'
 
 {assert} = require 'chai'
 
-describe 'User', ->
+describe 'Model#User', ->
   bucket = null
   user = null
+
+  before reset.db
 
   beforeEach (done) ->
     Bucket.create
@@ -49,6 +51,15 @@ describe 'User', ->
         assert.equal(e.errors.password.message, 'Your password must be between 6–20 characters and include a number.')
         done()
 
+    it 'returns an error if the email is not unique', (done) ->
+      User.create
+        name: 'Other Bucketer'
+        email: 'hello@buckets.io'
+        password: 'xyz123'
+      , (e, u) ->
+        assert.match e, /ValidationError/
+        done()
+
   describe 'Update', ->
     it 'updates password', (done) ->
       p = '1337abc123'
@@ -73,15 +84,15 @@ describe 'User', ->
         assert.equal(user.roles[0].name, 'editor')
         done()
 
-      describe 'Updates existing roles', ->
-        beforeEach (done) ->
-          user.upsertRole('editor', bucket, done)
+    describe 'Updates existing roles', ->
+      beforeEach (done) ->
+        user.upsertRole('editor', bucket, done)
 
-        it 'updates the role for a given resource', (done) ->
-          user.upsertRole 'contributor', bucket, (e, u) ->
-            assert.lengthOf(user.roles, 1)
-            assert.equal(user.roles[0].name, 'contributor')
-            done()
+      it 'updates the role for a given resource', (done) ->
+        user.upsertRole 'contributor', bucket, (e, u) ->
+          assert.lengthOf(user.roles, 1)
+          assert.equal(user.roles[0].name, 'contributor')
+          done()
 
   describe '#removeRole', ->
     beforeEach (done) ->

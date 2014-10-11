@@ -9,6 +9,7 @@ tpl = require 'templates/fields/edit'
 
 module.exports = class FieldEditView extends View
   template: tpl
+  mixins: [FormMixin]
   events:
     'submit form': 'submitForm'
     'click [href="#cancel"]': 'clickCancel'
@@ -19,7 +20,7 @@ module.exports = class FieldEditView extends View
   render: ->
     super
 
-    if @model.get('fieldType') in ['text', 'textarea', 'checkbox', 'number']
+    if @model.get('fieldType') in ['text', 'textarea', 'checkbox', 'number', 'cloudinary_image']
       @renderSettings()
     else
       # Otherwise ensure the plugin is loaded and see if one exists
@@ -53,5 +54,3 @@ module.exports = class FieldEditView extends View
   clickCancel: (e) ->
     e.preventDefault()
     @dispose()
-
-  @mixin FormMixin
